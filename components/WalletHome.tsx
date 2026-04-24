@@ -130,9 +130,9 @@ export default function WalletHome() {
         <NavItem icon={<Home className="w-5 h-5" />} label="Home" active />
         <NavItem icon={<ShoppingBag className="w-5 h-5" />} label="Shop" />
         <button
-          onClick={() => setScreen("watch")}
+          onClick={() => setScreen("scan")}
           className="w-14 h-14 rounded-full bg-tng-blue text-white shadow-lg flex items-center justify-center -mt-8 border-4 border-white"
-          aria-label="Scan / Smartwatch"
+          aria-label="Scan"
         >
           <ScanLine className="w-6 h-6" />
         </button>

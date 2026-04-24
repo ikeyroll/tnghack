@@ -12,7 +12,9 @@ type NavScreen =
   | "cashloan"
   | "receive"
   | "watch"
-  | "transfer-recipient";
+  | "transfer-recipient"
+  | "scan"
+  | "pay";
 
 type TangoResp = {
   intent: "faq" | "transfer" | "navigate" | "unknown";
@@ -29,8 +31,10 @@ const NAV_KEYWORDS: { screen: NavScreen; match: string[]; label: string }[] = [
   { screen: "prepaid",            match: ["prepaid", "top up", "topup", "reload", "my prepaid"], label: "MY Prepaid" },
   { screen: "donation",           match: ["donation", "donate", "charity", "zakat"],              label: "Donation" },
   { screen: "cashloan",           match: ["cash loan", "cashloan", "loan", "pinjaman"],           label: "CashLoan" },
-  { screen: "receive",            match: ["receive", "qr code", "my qr", "receive money"],       label: "Receive" },
-  { screen: "watch",              match: ["watch", "smartwatch", "scan"],                         label: "Smartwatch" },
+  { screen: "pay",                match: ["pay page", "pay tab", "pay screen", "pay qr", "my pay code", "show pay"], label: "Pay" },
+  { screen: "receive",            match: ["receive", "my qr", "receive money", "duitnow qr"],    label: "Receive" },
+  { screen: "scan",               match: ["scan", "scanner", "camera", "scan qr"],                label: "Scan" },
+  { screen: "watch",              match: ["watch", "smartwatch"],                                 label: "Smartwatch" },
   { screen: "transfer-recipient", match: ["transfer page", "send money", "transfer screen"],     label: "Transfer" },
   { screen: "home",               match: ["home", "main screen", "dashboard"],                    label: "Home" },
 ];
@@ -129,7 +133,7 @@ export async function POST(req: NextRequest) {
   "intent": "faq" | "transfer" | "navigate" | "unknown",
   "amount": number | null,
   "recipientQuery": string | null,
-  "screen": "home"|"prepaid"|"donation"|"cashloan"|"receive"|"watch"|"transfer-recipient"|null,
+  "screen": "home"|"prepaid"|"donation"|"cashloan"|"receive"|"watch"|"transfer-recipient"|"scan"|"pay"|null,
   "confidence": number (0..1),
   "riskLevel": "low"|"medium"|"high"|null,
   "needsClarification": boolean,
@@ -144,7 +148,16 @@ Context:
 - Daily transfer limit: RM${WALLET.dailyLimit}
 - Known saved recipients:
 ${known}
-- Available app pages (for navigate intent): home, prepaid (mobile top-up), donation, cashloan, receive (QR code), watch (smartwatch/scan), transfer-recipient.
+- Available app pages (for navigate intent):
+  * home — main wallet dashboard
+  * scan — camera scanner to pay a QR
+  * pay — user's own barcode / QR to be scanned by a merchant
+  * receive — DuitNow QR code to receive money
+  * prepaid — mobile top-up
+  * donation — charity / donations
+  * cashloan — cash loan
+  * watch — the smartwatch simulator
+  * transfer-recipient — pick a recipient to transfer to
 
 Interpret the user's message and classify the intent:
 - "faq"       -> questions about balance, limits, fees, security. Answer in your own words using the context above. Be natural, concise (1-2 sentences), and helpful.

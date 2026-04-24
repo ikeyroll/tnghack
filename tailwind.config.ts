@@ -23,9 +23,15 @@ const config: Config = {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        scanline: {
+          "0%": { transform: "translateY(-80px)" },
+          "50%": { transform: "translateY(80px)" },
+          "100%": { transform: "translateY(-80px)" },
+        },
       },
       animation: {
         spin3d: "spin3d 1.2s linear infinite",
+        scanline: "scanline 2.2s ease-in-out infinite",
       },
     },
   },

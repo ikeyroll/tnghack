@@ -40,7 +40,7 @@ export default function TangoAssistant() {
       role: "ai",
       kind: "text",
       content:
-        "Hi, I'm Tango — your wallet assistant. I can answer FAQs, transfer money, read WhatsApp screenshots, and catch scams. Try a prompt below.",
+        "Hi, I'm Tango — your wallet assistant. I can answer FAQs, transfer money, read media  and screenshots, and catch scams. Try a prompt below.",
     },
   ]);
   const scroller = useRef<HTMLDivElement>(null);
@@ -131,7 +131,7 @@ export default function TangoAssistant() {
     // intent-based rendering
     if (data.intent === "navigate" && data.screen) {
       const allowed: Screen[] = [
-        "home", "prepaid", "donation", "cashloan", "receive", "watch", "transfer-recipient",
+        "home", "prepaid", "donation", "cashloan", "receive", "watch", "transfer-recipient", "scan", "pay",
       ];
       const target = allowed.includes(data.screen) ? (data.screen as Screen) : null;
       const msg = data.message || (target ? `Opening ${target}…` : "I can't open that page.");

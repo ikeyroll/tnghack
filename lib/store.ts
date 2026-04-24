@@ -14,7 +14,9 @@ export type Screen =
   | "receive"
   | "prepaid"
   | "donation"
-  | "cashloan";
+  | "cashloan"
+  | "scan"
+  | "pay";
 
 export type ActionLogEntry = {
   id: string;
@@ -45,6 +47,9 @@ export type FlowState = {
   // For phone handoff from watch
   handoffMessage?: string;
 
+  // Remote pairing code (used by /remote watch controller)
+  pairCode?: string;
+
   // actions
   setScreen: (s: Screen) => void;
   setDevice: (d: Device) => void;
@@ -54,6 +59,7 @@ export type FlowState = {
   setAmount: (n?: number) => void;
   setNote: (n: string) => void;
   setHandoff: (msg?: string) => void;
+  setPairCode: (code?: string) => void;
 
   logAction: (entry: Omit<ActionLogEntry, "id" | "ts">) => void;
   clearActionLog: () => void;
@@ -85,6 +91,7 @@ export const useApp = create<FlowState>()(
   setAmount: (n) => set({ amount: n }),
   setNote: (n) => set({ note: n }),
   setHandoff: (msg) => set({ handoffMessage: msg }),
+  setPairCode: (code) => set({ pairCode: code }),
 
   logAction: (entry) =>
     set((state) => ({
@@ -134,7 +141,7 @@ export const useApp = create<FlowState>()(
       name: "tango-wallet-state-v2",
       storage: createJSONStorage(() => (typeof window === "undefined" ? (undefined as any) : window.localStorage)),
       // only persist history & balance; don't persist transient UI state
-      partialize: (s) => ({ actionLog: s.actionLog, balance: s.balance }) as any,
+      partialize: (s) => ({ actionLog: s.actionLog, balance: s.balance, pairCode: s.pairCode }) as any,
     },
   ),
 );

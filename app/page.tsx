@@ -11,14 +11,18 @@ import Processing from "@/components/Processing";
 import Receipt from "@/components/Receipt";
 import TangoAssistant from "@/components/TangoAssistant";
 import WatchSimulator from "@/components/WatchSimulator";
-import ReceiveScreen from "@/components/ReceiveScreen";
 import PrepaidScreen from "@/components/PrepaidScreen";
 import DonationScreen from "@/components/DonationScreen";
 import CashLoanScreen from "@/components/CashLoanScreen";
+import ScanScreen from "@/components/ScanScreen";
+import RemoteBridge from "@/components/RemoteBridge";
 import { useApp } from "@/lib/store";
 
 export default function Page() {
   const { screen, handoffMessage, setHandoff } = useApp();
+  // Collapse the Scan/Pay/Receive sibling screens into one key so switching
+  // tabs inside ScanScreen doesn't trigger a slide animation.
+  const animKey = screen === "pay" || screen === "receive" ? "scan" : screen;
   useEffect(() => {
     if (handoffMessage) {
       const t = setTimeout(() => setHandoff(undefined), 5000);
@@ -34,7 +38,7 @@ export default function Page() {
         <PhoneShell>
           <AnimatePresence mode="wait">
             <motion.div
-              key={screen}
+              key={animKey}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -47,10 +51,14 @@ export default function Page() {
               {screen === "processing" && <Processing />}
               {screen === "receipt" && <Receipt />}
               {screen === "watch" && <WatchSimulator />}
-              {screen === "receive" && <ReceiveScreen />}
               {screen === "prepaid" && <PrepaidScreen />}
               {screen === "donation" && <DonationScreen />}
               {screen === "cashloan" && <CashLoanScreen />}
+              {(screen === "scan" || screen === "pay" || screen === "receive") && (
+                <ScanScreen
+                  initialTab={screen === "pay" ? "Pay" : screen === "receive" ? "Receive" : "Scan"}
+                />
+              )}
               {/* AuthModal handles its own visibility at screen==="auth" */}
               {screen === "auth" && <TransferMoney />}
             </motion.div>
@@ -59,6 +67,7 @@ export default function Page() {
           <TransferSheet />
           <AuthModal />
           <TangoAssistant />
+          <RemoteBridge />
 
           {/* Handoff banner from watch */}
           <AnimatePresence>
