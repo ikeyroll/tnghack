@@ -131,7 +131,7 @@ export const useApp = create<FlowState>()(
     }),
 }),
     {
-      name: "tango-wallet-state",
+      name: "tango-wallet-state-v2",
       storage: createJSONStorage(() => (typeof window === "undefined" ? (undefined as any) : window.localStorage)),
       // only persist history & balance; don't persist transient UI state
       partialize: (s) => ({ actionLog: s.actionLog, balance: s.balance }) as any,

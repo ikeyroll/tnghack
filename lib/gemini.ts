@@ -12,27 +12,71 @@ function getClient() {
   return client;
 }
 
-export async function genJson<T = any>(prompt: string, schemaHint?: string): Promise<T | null> {
-  const c = getClient();
-  if (!c) return null;
-  const sys = `You are Tango, an AI assistant inside a Malaysian e-wallet demo app.
+function extractText(res: any): string {
+  return (
+    res?.text ??
+    res?.response?.text ??
+    res?.candidates?.[0]?.content?.parts?.[0]?.text ??
+    ""
+  );
+}
+
+function sysPrompt(schemaHint?: string) {
+  return `You are Tango, an AI assistant inside a Malaysian e-wallet demo app.
 Return ONLY a valid JSON object. No markdown fences, no commentary.
 ${schemaHint ? `Schema hint:\n${schemaHint}` : ""}`;
+}
+
+export async function genJson<T = any>(prompt: string, schemaHint?: string): Promise<T | null> {
+  const c = getClient();
+  if (!c) {
+    console.warn("[gemini] no API key, using fallback");
+    return null;
+  }
   try {
     const res = await c.models.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: { systemInstruction: sys, responseMimeType: "application/json" } as any,
+      config: { systemInstruction: sysPrompt(schemaHint), responseMimeType: "application/json" } as any,
     });
-    const text =
-      (res as any).text ??
-      (res as any).response?.text ??
-      (res as any).candidates?.[0]?.content?.parts?.[0]?.text ??
-      "";
+    const text = extractText(res);
     if (!text) return null;
     return JSON.parse(text) as T;
   } catch (e) {
-    console.warn("[gemini] call failed, falling back:", (e as Error).message);
+    console.warn("[gemini] text call failed, falling back:", (e as Error).message);
+    return null;
+  }
+}
+
+export async function genJsonFromImage<T = any>(
+  prompt: string,
+  image: { data: string; mimeType: string },
+  schemaHint?: string,
+): Promise<T | null> {
+  const c = getClient();
+  if (!c) {
+    console.warn("[gemini] no API key, vision call skipped");
+    return null;
+  }
+  try {
+    const res = await c.models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
+          ],
+        },
+      ],
+      config: { systemInstruction: sysPrompt(schemaHint), responseMimeType: "application/json" } as any,
+    });
+    const text = extractText(res);
+    if (!text) return null;
+    return JSON.parse(text) as T;
+  } catch (e) {
+    console.warn("[gemini] vision call failed:", (e as Error).message);
     return null;
   }
 }

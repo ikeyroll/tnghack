@@ -4,8 +4,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Sparkles, X, Send, Paperclip, User, ShieldAlert, ShieldCheck,
   ImagePlus, AlertTriangle, MessageCircle, History as HistoryIcon, Trash2,
-  CheckCircle2, MessageSquare, Smartphone,
+  CheckCircle2, MessageSquare, Smartphone, Mic, MicOff, Volume2, VolumeX,
 } from "lucide-react";
+import type { Screen } from "@/lib/store";
 import { useApp } from "@/lib/store";
 import { RECIPIENTS, Recipient, WHATSAPP_SAMPLES, averageSentTo, findRecipients } from "@/lib/db";
 import { fmtRM } from "@/lib/utils";
@@ -20,14 +21,20 @@ type Msg =
 const SUGGESTIONS = [
   "What is my transfer limit?",
   "Pay RM50 to Rizwan",
-  "Pay RM500 to Rizwan",
+  "Open Prepaid",
+  "Go to Donation",
+  "Show Cash Loan",
 ];
 
 export default function TangoAssistant() {
-  const { showTango, setShowTango, startTransfer, logAction, actionLog, clearActionLog } = useApp();
+  const { showTango, setShowTango, startTransfer, logAction, actionLog, clearActionLog, setScreen } = useApp();
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(true);
+  const recogRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
@@ -41,6 +48,63 @@ export default function TangoAssistant() {
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
   }, [msgs, showTango]);
+
+  // Stop speech when panel closes
+  useEffect(() => {
+    if (!showTango && typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+      try { recogRef.current?.stop?.(); } catch {}
+      setListening(false);
+    }
+  }, [showTango]);
+
+  function speak(text: string) {
+    if (!voiceOn || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      u.pitch = 1;
+      u.lang = "en-US";
+      window.speechSynthesis.speak(u);
+    } catch {}
+  }
+
+  function toggleMic() {
+    if (typeof window === "undefined") return;
+    const SR: any =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setMsgs((m) => [...m, { role: "ai", kind: "text", content: "Voice input isn't supported in this browser. Try Chrome on desktop or Android." }]);
+      return;
+    }
+    if (listening) {
+      try { recogRef.current?.stop?.(); } catch {}
+      setListening(false);
+      return;
+    }
+    const r = new SR();
+    r.lang = "en-US";
+    r.interimResults = false;
+    r.maxAlternatives = 1;
+    r.onresult = (e: any) => {
+      const transcript = e.results?.[0]?.[0]?.transcript?.trim();
+      if (transcript) {
+        setInput("");
+        send(transcript);
+      }
+    };
+    r.onerror = () => setListening(false);
+    r.onend = () => setListening(false);
+    recogRef.current = r;
+    try {
+      window.speechSynthesis?.cancel();
+      r.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  }
 
   async function send(text: string) {
     const clean = text.trim();
@@ -65,15 +129,35 @@ export default function TangoAssistant() {
 
   function handleAi(data: any) {
     // intent-based rendering
+    if (data.intent === "navigate" && data.screen) {
+      const allowed: Screen[] = [
+        "home", "prepaid", "donation", "cashloan", "receive", "watch", "transfer-recipient",
+      ];
+      const target = allowed.includes(data.screen) ? (data.screen as Screen) : null;
+      const msg = data.message || (target ? `Opening ${target}…` : "I can't open that page.");
+      setMsgs((m) => [...m, { role: "ai", kind: "text", content: msg }]);
+      speak(msg);
+      if (target) {
+        logAction({ type: "faq", summary: `Navigated to ${target}`, details: { screen: target } });
+        setTimeout(() => {
+          setShowTango(false);
+          setScreen(target);
+        }, 500);
+      }
+      return;
+    }
     if (data.intent === "faq") {
       setMsgs((m) => [...m, { role: "ai", kind: "text", content: data.message }]);
       logAction({ type: "faq", summary: data.message.slice(0, 80), details: { answer: data.message } });
+      speak(data.message);
       return;
     }
     if (data.intent === "transfer" && data.recipientQuery) {
       const options: Recipient[] = findRecipients(String(data.recipientQuery));
       if (options.length === 0) {
-        setMsgs((m) => [...m, { role: "ai", kind: "text", content: `I couldn't find anyone matching "${data.recipientQuery}".` }]);
+        const msg = `I couldn't find anyone matching "${data.recipientQuery}".`;
+        setMsgs((m) => [...m, { role: "ai", kind: "text", content: msg }]);
+        speak(msg);
         return;
       }
       if (options.length === 1) {
@@ -96,6 +180,11 @@ export default function TangoAssistant() {
                 : undefined,
           },
         ]);
+        speak(
+          risk === "low"
+            ? `Ready to transfer RM${amt} to ${r.name}. Please confirm.`
+            : `Warning. You usually send much less to ${r.name}. Please review before continuing.`
+        );
         return;
       }
       // multiple — pick list
@@ -117,7 +206,9 @@ export default function TangoAssistant() {
       ]);
       return;
     }
-    setMsgs((m) => [...m, { role: "ai", kind: "text", content: data.message || "Got it." }]);
+    const fallback = data.message || "Got it.";
+    setMsgs((m) => [...m, { role: "ai", kind: "text", content: fallback }]);
+    speak(fallback);
   }
 
   function pickRecipient(r: Recipient, amount: number) {
@@ -141,6 +232,64 @@ export default function TangoAssistant() {
     ]);
   }
 
+  function renderAnalysis(data: any) {
+    if (!data || typeof data.ocr !== "string") {
+      const msg = data?.error || "Sorry, I couldn't analyse that image.";
+      setMsgs((m) => [...m, { role: "ai", kind: "text", content: msg }]);
+      speak(msg);
+      return;
+    }
+    if (data.risk === "high") {
+      setMsgs((m) => [
+        ...m,
+        { role: "ai", kind: "text", content: `I read: "${data.ocr}"` },
+        {
+          role: "ai",
+          kind: "scam-warning",
+          sender: data.sender || "Unknown",
+          amount: Number(data.amount) || 0,
+          reasons: Array.isArray(data.reasons) && data.reasons.length ? data.reasons : ["Suspicious content detected."],
+        },
+      ]);
+      logAction({
+        type: "scam-blocked",
+        summary: `Blocked scam: ${data.sender} asked for ${fmtRM(Number(data.amount) || 0)}`,
+        details: { reasons: data.reasons, ocr: data.ocr, sender: data.sender, amount: data.amount, source: data.source },
+      });
+      speak(data.message || `Warning. This looks like a scam. I've blocked the request.`);
+      return;
+    }
+    // low/medium -> offer to continue
+    const options = findRecipients(String(data.recipientQuery || ""));
+    const amount = Number(data.amount) || 0;
+    setMsgs((m) => [
+      ...m,
+      { role: "ai", kind: "text", content: `I read: "${data.ocr}"` },
+      {
+        role: "ai",
+        kind: "text",
+        content:
+          data.message ||
+          (amount
+            ? `Looks like a request to send ${fmtRM(amount)} to ${data.recipientQuery}. Continue?`
+            : `I couldn't find a clear payment request in this image.`),
+      },
+      ...(amount && options.length
+        ? [
+            {
+              role: "ai" as const,
+              kind: "recipients" as const,
+              amount,
+              options,
+              confidence: 0.9,
+              query: String(data.recipientQuery),
+            },
+          ]
+        : []),
+    ]);
+    speak(data.message || (amount ? `I found a payment request for RM${amount}.` : `No payment request found.`));
+  }
+
   async function simulateWhatsApp(kind: "normal" | "scam") {
     const label = kind === "normal" ? "Normal WhatsApp screenshot.png" : "Suspicious WhatsApp screenshot.png";
     setMsgs((m) => [...m, { role: "user", kind: "image", label }]);
@@ -153,50 +302,42 @@ export default function TangoAssistant() {
         body: JSON.stringify({ sample: kind }),
       });
       const data = await res.json();
-      if (data.risk === "high") {
-        setMsgs((m) => [
-          ...m,
-          {
-            role: "ai",
-            kind: "text",
-            content: `OCR detected: "${data.ocr}"`,
-          },
-          {
-            role: "ai",
-            kind: "scam-warning",
-            sender: data.sender,
-            amount: data.amount,
-            reasons: data.reasons,
-          },
-        ]);
-        logAction({
-          type: "scam-blocked",
-          summary: `Blocked scam: ${data.sender} asked for ${fmtRM(data.amount)}`,
-          details: { reasons: data.reasons, ocr: data.ocr, sender: data.sender, amount: data.amount },
-        });
-      } else {
-        const options = findRecipients(String(data.recipientQuery));
-        setMsgs((m) => [
-          ...m,
-          { role: "ai", kind: "text", content: `OCR detected: "${data.ocr}"` },
-          {
-            role: "ai",
-            kind: "text",
-            content: `I detected a request to send ${fmtRM(data.amount)} to ${data.recipientQuery}. Continue?`,
-          },
-          {
-            role: "ai",
-            kind: "recipients",
-            amount: data.amount,
-            options,
-            confidence: 0.9,
-            query: data.recipientQuery,
-          },
-        ]);
-      }
+      renderAnalysis(data);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function uploadImage(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setMsgs((m) => [...m, { role: "ai", kind: "text", content: "Please pick an image file (PNG, JPG, WebP)." }]);
+      return;
+    }
+    // Compress / cap size: Gemini inline data should stay under ~4MB
+    if (file.size > 8 * 1024 * 1024) {
+      setMsgs((m) => [...m, { role: "ai", kind: "text", content: "That image is too large — try one under 8MB." }]);
+      return;
+    }
+    setMsgs((m) => [...m, { role: "user", kind: "image", label: file.name }]);
+    logAction({ type: "whatsapp-upload", summary: `Uploaded ${file.name}`, details: { size: file.size, type: file.type } });
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/analyze-image", { method: "POST", body: form });
+      const data = await res.json();
+      renderAnalysis(data);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "ai", kind: "text", content: "Upload failed. Check your connection and try again." }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (f) uploadImage(f);
   }
 
   return (
@@ -221,6 +362,18 @@ export default function TangoAssistant() {
                 <div className="font-semibold">Tango</div>
                 <div className="text-[11px] text-white/80">Your AI wallet assistant</div>
               </div>
+              <button
+                onClick={() => {
+                  const next = !voiceOn;
+                  setVoiceOn(next);
+                  if (!next && typeof window !== "undefined") window.speechSynthesis?.cancel();
+                }}
+                aria-label={voiceOn ? "Mute voice" : "Unmute voice"}
+                title={voiceOn ? "Voice replies on" : "Voice replies off"}
+                className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"
+              >
+                {voiceOn ? <Volume2 className="w-4.5 h-4.5" /> : <VolumeX className="w-4.5 h-4.5" />}
+              </button>
               <button
                 onClick={() => setShowHistory(true)}
                 aria-label="History"
@@ -277,10 +430,10 @@ export default function TangoAssistant() {
               </div>
               <div className="px-3 pt-2 flex gap-2">
                 <button
-                  onClick={() => simulateWhatsApp("normal")}
+                  onClick={() => fileInputRef.current?.click()}
                   className="text-[11px] px-2.5 py-1.5 rounded-full bg-tng-sky text-tng-blue font-semibold flex items-center gap-1"
                 >
-                  <ImagePlus className="w-3.5 h-3.5" /> Upload WhatsApp
+                  <ImagePlus className="w-3.5 h-3.5" /> Upload image
                 </button>
                 <button
                   onClick={() => simulateWhatsApp("scam")}
@@ -290,14 +443,36 @@ export default function TangoAssistant() {
                 </button>
               </div>
               <div className="px-3 py-3 flex items-center gap-2">
-                <button aria-label="Attach" className="text-gray-400"><Paperclip className="w-5 h-5" /></button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onPickFile}
+                />
+                <button
+                  aria-label="Attach image"
+                  className="text-gray-500"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-5 h-5" />
+                </button>
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send(input)}
-                  placeholder="Ask Tango…"
+                  placeholder={listening ? "Listening…" : "Ask Tango…"}
                   className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none"
                 />
+                <button
+                  onClick={toggleMic}
+                  aria-label={listening ? "Stop listening" : "Voice input"}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                    listening ? "bg-rose-500 text-white animate-pulse" : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
                 <button
                   onClick={() => send(input)}
                   className="w-9 h-9 rounded-full bg-tng-blue text-white flex items-center justify-center"

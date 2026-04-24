@@ -15,7 +15,7 @@ export type Transaction = {
 };
 
 export const WALLET = {
-  balance: 15.93,
+  balance: 1000,
   dailyLimit: 5000,
   currency: "RM",
   user: "Demo User",
@@ -42,12 +42,12 @@ export const TRANSACTIONS: Transaction[] = [
 export const FAQS: { q: string; a: string; match: string[] }[] = [
   {
     q: "What is my transfer limit?",
-    a: "Your demo transfer limit is RM5,000 per day. For this prototype, the available wallet balance is RM15.93.",
+    a: "Your demo transfer limit is RM5,000 per day. For this prototype, the available wallet balance is RM1,000.",
     match: ["limit", "transfer limit", "daily limit", "max"],
   },
   {
     q: "What is my balance?",
-    a: "Your Tango Wallet balance is RM15.93. Tap Add money on the home screen to top up.",
+    a: "Your Tango Wallet balance is RM1,000. Tap Add money on the home screen to top up.",
     match: ["balance", "how much", "wallet money"],
   },
   {
