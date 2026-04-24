@@ -2,7 +2,8 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Mic, Wifi, WifiOff, ArrowLeft, QrCode as QrIcon, Bell, Wallet,
+  Mic, Wifi, WifiOff, ArrowLeft, QrCode as QrIcon, Bell, Wallet, Sparkles,
+  Home, ScanLine, CreditCard, Heart, DollarSign, Send,
 } from "lucide-react";
 
 type Status = "idle" | "sending" | "ok" | "err";
@@ -333,6 +334,30 @@ function Controller() {
         </div>
       )}
 
+      {/* No-voice demo buttons */}
+      {room && (
+        <div className="mt-3 w-full max-w-[340px]">
+          <div className="text-[10px] text-white/50 text-center mb-2">Demo without voice</div>
+          {/* On-watch actions */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <DemoBtn icon={<QrIcon className="w-4 h-4" />} label="Pay" onClick={() => setView("pay")} />
+            <DemoBtn icon={<Wallet className="w-4 h-4" />} label="Balance" onClick={() => setView("balance")} />
+            <DemoBtn icon={<Bell className="w-4 h-4" />} label="Notifications" onClick={() => setView("notifications")} />
+          </div>
+          {/* Relay to phone */}
+          <div className="grid grid-cols-4 gap-1.5">
+            <DemoBtnSmall icon={<Send className="w-3.5 h-3.5" />} label="Transfer" onClick={() => send("pay-rizwan", { amount: 50 }, "Pay Rizwan RM50")} />
+            <DemoBtnSmall icon={<ScanLine className="w-3.5 h-3.5" />} label="Scan" onClick={() => send("open-scan", null, "Scan")} />
+            <DemoBtnSmall icon={<CreditCard className="w-3.5 h-3.5" />} label="Prepaid" onClick={() => send("open-prepaid", null, "Prepaid")} />
+            <DemoBtnSmall icon={<Heart className="w-3.5 h-3.5" />} label="Donate" onClick={() => send("open-donation", null, "Donation")} />
+            <DemoBtnSmall icon={<DollarSign className="w-3.5 h-3.5" />} label="Loan" onClick={() => send("open-cashloan", null, "CashLoan")} />
+            <DemoBtnSmall icon={<Home className="w-3.5 h-3.5" />} label="Home" onClick={() => send("open-home", null, "Home")} />
+            <DemoBtnSmall icon={<QrIcon className="w-3.5 h-3.5" />} label="Receive" onClick={() => send("open-receive", null, "Receive")} />
+            <DemoBtnSmall icon={<Sparkles className="w-3.5 h-3.5" />} label="Tango" onClick={() => send("show-tango", null, "Tango AI")} />
+          </div>
+        </div>
+      )}
+
       {room && (
         <button
           onClick={() => { setRoom(""); setDraft(""); }}
@@ -478,6 +503,30 @@ function ErrorFace({ label }: { label: string }) {
       <div className="text-rose-400 text-xs">Hmm…</div>
       <div className="text-[10px] text-white/70">{label}</div>
     </div>
+  );
+}
+
+function DemoBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 py-2 rounded-xl bg-zinc-900 border border-white/10 active:bg-zinc-800 text-white/90"
+    >
+      <span className="text-tng-blue">{icon}</span>
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
+  );
+}
+
+function DemoBtnSmall({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 py-1.5 rounded-lg bg-zinc-900 border border-white/10 active:bg-zinc-800 text-white/90"
+    >
+      <span className="text-tng-blue">{icon}</span>
+      <span className="text-[9px] font-medium">{label}</span>
+    </button>
   );
 }
 
