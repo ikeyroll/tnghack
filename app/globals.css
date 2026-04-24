@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  font-family: Inter, system-ui, "Segoe UI", sans-serif;
+  background: #0b1220;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.tng-blue { background: linear-gradient(180deg, #0057d9 0%, #0161e8 100%); }
+
+.phone-frame {
+  width: 390px;
+  max-width: 100vw;
+  height: 820px;
+  max-height: 100dvh;
+  border-radius: 44px;
+  background: #f2f4f8;
+  box-shadow: 0 25px 60px rgba(0,0,0,.5);
+  border: 6px solid #0e0e10;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 420px) {
+  .phone-frame { border-radius: 0; border-width: 0; height: 100dvh; box-shadow: none; }
+}
+
+.notch {
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 120px; height: 26px;
+  background: #0e0e10;
+  border-radius: 18px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.chat-bubble-user {
+  background: #0057d9; color: white;
+  border-radius: 18px 18px 4px 18px;
+}
+.chat-bubble-ai {
+  background: white; color: #0b1220;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px 18px 18px 4px;
+}
+
+.watch-ring {
+  background: radial-gradient(circle at 30% 30%, #1f2937 0%, #050505 70%);
+}
